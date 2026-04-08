@@ -1,3 +1,4 @@
+//transaction
 class transaction;
 
     rand bit [31:0] paddr;
@@ -10,11 +11,11 @@ class transaction;
     bit pslverr;
  
     constraint addr_c {
-      paddr >= 0; paddr <= 15;////2 3 4
+      paddr >= 0; paddr <= 15;
       }
       
       constraint data_c {
-      pwdata >= 0; pwdata <= 255; /// 2-9
+      pwdata >= 0; pwdata <= 255;
       }
       
       function void display(input string tag);
@@ -23,15 +24,15 @@ class transaction;
   
 endclass
 
-
+//generator
 class generator;
   
    transaction tr;
    mailbox #(transaction) mbx;
    int count = 0;
   
-   event nextdrv; ///driver completed task of triggering interface
-   event nextsco; ///scoreboard completed its objective
+   event nextdrv; //driver completion event
+   event nextsco; ///scoreboard completion event
    event done; 
    
    
@@ -41,7 +42,6 @@ class generator;
    endfunction; 
 
    task run(); 
-    
      repeat(count)   
        begin    
            assert(tr.randomize()) else $error("Randomization failed");  
@@ -50,19 +50,16 @@ class generator;
            @(nextdrv);
            @(nextsco);
          end  
-     ->done;
+     ->done;  //done event triggered
    endtask
-  
-  
 endclass
 
-/////////////////////////////////////////////////////
 
-
+//driver
 class driver;
   
    virtual abp_if vif;
-   mailbox #(transaction) mbx;
+   mailbox #(transaction)mbx;
    transaction datac;
   
    event nextdrv;
@@ -74,23 +71,22 @@ class driver;
   
   task reset();
     vif.presetn <= 1'b0;
-    vif.psel    <= 1'b0;
+    vif.psel    <=1'b0;
     vif.penable <= 1'b0;
     vif.pwdata  <= 0;
-    vif.paddr   <= 0;
+     vif.paddr   <=0;
     vif.pwrite  <= 1'b0;
     repeat(5) @(posedge vif.pclk);
     vif.presetn <= 1'b1;
     $display("[DRV] : RESET DONE");
-    $display("----------------------------------------------------------------------------");
+    $display("-------------------------------------------------");
   endtask
    
   task run();
     forever begin
-      
       mbx.get(datac);
       @(posedge vif.pclk);     
-      if(datac.pwrite == 1) ///write
+      if(datac.pwrite == 1) //write
         begin
         vif.psel    <= 1'b1;
         vif.penable <= 1'b0;
@@ -104,7 +100,7 @@ class driver;
             vif.penable <= 1'b0;
             vif.pwrite <= 1'b0;
             datac.display("DRV");
-            ->nextdrv;          
+            ->nextdrv;  //driver event triggered
         end
       else if (datac.pwrite == 0) //read
         begin
@@ -130,16 +126,13 @@ class driver;
 endclass
 
 
-//////////////////////////////////
 
+//monitor
 class monitor;
 
-   virtual abp_if vif;
+   virtual abp_if vif; //virtual interface
    mailbox #(transaction) mbx;
    transaction tr;
-
-  
-
  
     function new(mailbox #(transaction) mbx);
       this.mbx = mbx;     
@@ -148,9 +141,8 @@ class monitor;
   task run();
     tr = new();
     forever begin
-              @(posedge vif.pclk);
-              if(vif.pready)
-              begin
+         @(posedge vif.pclk);
+        if(vif.pready) begin
               tr.pwdata  = vif.pwdata;
               tr.paddr   = vif.paddr;
             tr.pwrite  = vif.pwrite;
@@ -162,13 +154,9 @@ class monitor;
               end
               end
    endtask
-
-
-  
 endclass
 
-///////////////////////////////////////////////
-
+//scoreboard
 class scoreboard;
   
    mailbox #(transaction) mbx;
@@ -190,12 +178,12 @@ class scoreboard;
       mbx.get(tr);
       tr.display("SCO");
       
-      if( (tr.pwrite == 1'b1) && (tr.pslverr == 1'b0))  ///write access
+      if( (tr.pwrite == 1'b1) && (tr.pslverr == 1'b0))
         begin 
         pwdata[tr.paddr] = tr.pwdata;
         $display("[SCO] : DATA STORED DATA : %0d ADDR: %0d",tr.pwdata, tr.paddr);
         end
-      else if((tr.pwrite == 1'b0) && (tr.pslverr == 1'b0))  ///read access
+      else if((tr.pwrite == 1'b0) && (tr.pslverr == 1'b0))
         begin
          rdata = pwdata[tr.paddr];    
         if( tr.prdata == rdata)
@@ -210,43 +198,31 @@ class scoreboard;
         begin
           $display("[SCO] : SLV ERROR DETECTED");
         end  
-      $display("---------------------------------------------------------------------------------------------------");
-      ->nextsco;
+      $display("---------------------------------------------------");
+      ->nextsco; //scoreboard event done triggered
 
   end
-    
   endtask
-
-  
 endclass
 
-//////////////////////////////////////////////////////////
-
+//environment
 class environment;
 
     generator gen;
     driver drv;
     monitor mon;
     scoreboard sco; 
+    event nextgd;
+    event nextgs;
   
-    
-  
-    event nextgd; ///gen -> drv
-    event nextgs;  /// gen -> sco
-  
-  mailbox #(transaction) gdmbx; ///gen - drv
-     
-  mailbox #(transaction) msmbx;  /// mon - sco
+  mailbox #(transaction) gdmbx; //gen - drv
+  mailbox #(transaction) msmbx; // mon - sco
   
     virtual abp_if vif;
- 
-  
   function new(virtual abp_if vif);
-       
     gdmbx = new();
     gen = new(gdmbx);
     drv = new(gdmbx);
-    
     
     msmbx = new();
     mon = new(msmbx);
@@ -261,7 +237,6 @@ class environment;
     
     gen.nextdrv = nextgd;
     drv.nextdrv = nextgd;
-
   endfunction
   
   task pre_test();
@@ -279,7 +254,7 @@ class environment;
   
   task post_test();
     wait(gen.done.triggered);  
-    $display("----Total number of Mismatch : %0d------",sco.err);
+    $display("Total number of Mismatch : %0d",sco.err);
     $finish();
   endtask
   
@@ -288,13 +263,10 @@ class environment;
     test();
     post_test();  
   endtask
-  
-  
-  
 endclass
 
 
-//////////////////////////////////////////////////
+//testbench module
  module tb;
     
    abp_if vif();
@@ -321,15 +293,12 @@ endclass
     
     environment env;
     
-    
-    
     initial begin
       env = new(vif);
       env.gen.count = 20;
       env.run();
     end
       
-    
     initial begin
       $dumpfile("dump.vcd");
       $dumpvars;
