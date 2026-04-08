@@ -10,7 +10,7 @@ module apb_s
     
     output reg [7:0] prdata,
     output reg pready,
-    output     pslverr
+    output pslverr
 );
 
 
@@ -22,27 +22,17 @@ module apb_s
   reg [1:0] state, nstate;
   
   bit  addr_err , addv_err, data_err;
-  ////////// setup - correct apb cycles
-  /////////  addr_range - should be less than 16
-  /////////   addr_val - be greater than or equal to 0
-  /////////   data_val - be greater than or equal to 0  
-/*
-Transactions that receive an error, might or might not have changed the state of the peripheral. 
-This is peripheral-specific and either is acceptable. 
-When a write transaction receives an error this does not mean that the register within the peripheral 
-has not been updated. Read transactions that receive an error can return invalid data.
- There is no requirement for the peripheral to drive the data bus to all 0s for a read error.
-*/
-  ///// reset decoder
+
+  //next state
   always@(posedge pclk, negedge presetn)
     begin
       if(presetn == 1'b0)
           state <= idle;
       else
-          state <= nstate;
+          state <=nstate;
     end
-    
-    ///next state , output decoder
+
+  //combinational logic
   always@(*)
     begin
     case(state)
@@ -54,18 +44,13 @@ has not been updated. Read transactions that receive an error can return invalid
             if(psel == 1'b1 && pwrite == 1'b1)  
                 nstate = write;
             else if (psel == 1'b1 && pwrite == 1'b0)
-                nstate = read;
+                nstate =read;
             else
                 nstate = idle; 
-            
-           
-                
-            
       end   
            
      
-     write:
-     begin
+     write: begin
         if(psel == 1'b1 && penable == 1'b1)
         begin 
                  if(!addr_err && !addv_err && !data_err )
@@ -78,9 +63,7 @@ has not been updated. Read transactions that receive an error can return invalid
                      begin
                      nstate = idle;
                      pready = 1'b1;
-                     end     
-                 
-     
+                     end   
         end
     end
      
@@ -92,19 +75,18 @@ has not been updated. Read transactions that receive an error can return invalid
                  begin
                  pready = 1'b1;
                  prdata = mem[paddr];
-                 nstate      = idle;
+                 nstate= idle;
                  end
             else
                 begin
                 pready = 1'b1;
                 prdata = 8'h00;
-                nstate      = idle;
+                nstate  = idle;
                 end
         end
     end
      
-    default : 
-    begin
+    default : begin
         nstate = idle; 
         prdata    = 8'h00;
         pready    = 1'b0;
@@ -112,7 +94,6 @@ has not been updated. Read transactions that receive an error can return invalid
     endcase
     end
 
-///////////////// checking valid values of address
 reg av_t = 0;
 always@(*)
 begin
@@ -122,7 +103,6 @@ else
   av_t = 1'b1;
 end
 
-///////////////// checking valid values of address
 reg dv_t = 0;
 always@(*)
 begin
