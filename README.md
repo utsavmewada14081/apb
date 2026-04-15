@@ -48,3 +48,4 @@ The Advanced Peripheral Bus (APB) protocol is a low-power, non-pipelined, synchr
   </tr>
 </table>
 
+
