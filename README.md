@@ -48,4 +48,14 @@ The Advanced Peripheral Bus (APB) protocol is a low-power, non-pipelined, synchr
   </tr>
 </table>
 
+## Write Transfer with no wait states
+![](/assets/images/apb_write_no_wait_states.png)
 
+## Write Transfer with wait states
+![](/assets/images/apb_write_transfer_with_wait_states.png)
+
+## Read Transfer with no wait states
+![](/assets/images/apb_read_no_wait_state.png)
+
+## Read Transfer with wait states
+![](/assets/images/apb_read_with_wait_states.png)
